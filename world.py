@@ -1,6 +1,6 @@
 import pygame, random
 import numpy as np
-from creature import Boid, Obstacle
+from creature import Boid, Obstacle, Predator
 import math
 
 
@@ -29,6 +29,7 @@ class World(object):
         self.avoid.value = 10
         self.all_things = pygame.sprite.Group()
         self.boids = pygame.sprite.Group()
+        self.predators = pygame.sprite.Group()
         self.obstacles = pygame.sprite.Group()
 
     def populate(self, nr_of_boids, boid_radius, boid_sight):
@@ -47,6 +48,14 @@ class World(object):
         self.all_things.add(obstacle)
         self.obstacles.add(obstacle)
 
+    def add_predator(self, pos):
+        v = np.array([random.uniform(-15, 15), random.uniform(-15, 15)])
+        predator = Predator(self, pos[1], pos[0], 10, v, 80)
+        self.all_things.add(predator)
+        self.predators.add(predator)
+        print("PREDATOR")
+        print(predator.pos)
+
     def get_cohesion_weight(self):
         #print(self.cohesion.value)
         return self.cohesion.value/100
@@ -62,6 +71,7 @@ class World(object):
 
     def get_avoidance_weight(self):
         return self.avoid.value/100
+
     def get_size(self):
         '''
         Neccesary for updating position of all moving objects, since the world
@@ -69,20 +79,19 @@ class World(object):
         '''
         return self.screen.get_size()
 
-    def get_close_neighbors(self, boid):
+    def get_close_neighbors(self, creature, remove_self):
         '''
-        Returns all neighboring boids close to the boid. The neighborhood
-        will determine the next position of the boid
+        Returns all neighboring boids close to the creature. The neighborhood
+        will determine the next position of the creature
         '''
         neighborhood = []
         #for b in self.boids:
-        #    d = (b.rect.centerx-boid.rect.centerx)**2 + (b.rect.centery - boid.rect.centery)**2
-        #    if d < boid.sight**2:
+        #    d = (b.rect.centerx-creature.rect.centerx)**2 + (b.rect.centery - creature.rect.centery)**2
+        #    if d < creature.sight**2:
         #        neighborhood.append(b)
-        neighborhood = self.grid.get_all_elements(boid.pos[1], boid.pos[0], boid.sight)
-        #print(neighborhood)
-        #print(boid)
-        neighborhood.remove(boid)
+        neighborhood = self.grid.get_all_elements(creature.pos[1], creature.pos[0], creature.sight)
+        if remove_self:
+            neighborhood.remove(creature)
         return neighborhood
 
     def get_close_predators(self, boid):
@@ -90,7 +99,12 @@ class World(object):
         The world return all predators detected by the boid's line of sight.
         If a predator is close by, the flight path of boid will be influenced
         '''
-        return []
+        close_predators = []
+        for predator in self.predators:
+            distance = np.linalg.norm(predator.pos-boid.pos)
+            if distance < boid.sight:
+                close_predators.append(predator)
+        return close_predators
 
     def get_close_obstacles(self, boid):
         neighborhood = []
@@ -139,7 +153,7 @@ class Grid(object):
         elements = []
         for i in range(-r, r):
             for j in range(-r, r):
-                tx = grid_x + j
+                tx = (grid_x + j)
                 ty = grid_y + i
                 if ty >= 0 and ty < self.nr_of_rows and tx >= 0 and tx < self.nr_of_cols and r**2 >= i**2 + j**2:
                     elements.extend(self.grid[ty][tx].values())

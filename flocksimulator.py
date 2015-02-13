@@ -19,7 +19,7 @@ BG_COLOR = WHITE
 width, height = 800, 480
 dim = [width, height]
 
-nr_of_boids = 10
+nr_of_boids = 50
 nr_of_predators = 2
 
 boid_radius = 8.0
@@ -32,7 +32,7 @@ controls= sgc.surface.Screen(dim)
 sep_slider = Slider(label="Seperation", pos=(10, 10), min=0, max=200, min_step=1)
 coh_slider = Slider(label="Cohesion", pos=(10, 50), min=0, max=50, min_step=1,)
 align_slider = Slider(label="Aligmnent", pos=(10, 90), min=0, max=50, min_step=1,)
-avoid_slider = Slider(label="Avoidance", pos=(10, 130), min=0, max=100, min_step=1)
+avoid_slider = Slider(label="Avoidance", pos=(10, 130), min=0, max=1000, min_step=1)
 
 pygame.display.set_caption('Boids')
 
@@ -53,12 +53,11 @@ while not stopping:
         sgc.event(event)
         if event.type == QUIT:
             stopping = True
-        if event.type == MOUSEBUTTONDOWN:
-            if event.button == 3:
+        if event.type == pygame.KEYDOWN:
+            if event.key == K_o:
                 world.add_obstacle(pygame.mouse.get_pos())
-
-        #if event.type == GUI:
-        #    pass
+            if event.key == K_p:
+                world.add_predator(pygame.mouse.get_pos())
 
     screen.fill(BG_COLOR)
 
