@@ -75,7 +75,7 @@ class Creature(Thing):
         self.sight = sight
         super(Creature, self).__init__(world, y, x, radius*2, radius*2)
 
-    def drawCreature(self):
+    def draw_creature(self):
         self.image.fill((0,0,0))
         pygame.draw.ellipse(self.image, self.color, [0, 0, self.radius*2, self.radius*2])
         pygame.draw.aaline( self.image, (1,1,1), (self.radius,self.radius), self.get_orientation(), 2)
@@ -86,7 +86,7 @@ class Creature(Thing):
         self.rect.x = self.pos[0]-self.radius
         self.rect.y = self.pos[1]-self.radius
         if isinstance(self, Boid):
-            self.world.set_new_element_position(old_pos-self.radius, new_pos-self.radius, self)
+            self.world.set_new_element_position(old_pos-self.radius, new_pos-self.radius, self) #A way to do this exploting inheritenace i
 
     def calc_repel_force(self, obstacles):
         #The idea is to check if any of the obstacles is on a collisiion course by using a lookahead vector. A avoidance force
@@ -104,13 +104,10 @@ class Creature(Thing):
         threat = None
         for obstacle in obstacles:
             if self.line_intersect_sphere(ahead, ahead2, obstacle):
-                print(obstacle)
                 threat = obstacle
                 #TODO: Need to find most threatning obstacle
                 break
         if threat:
-            #print(threat)
-            #print(ahead)
             force = ahead - threat.pos
             magnitude = (np.linalg.norm(force))
             if magnitude < 0:
@@ -119,8 +116,9 @@ class Creature(Thing):
         else:
             return np.array([0.0,0.0])
 
-    def repel_tester(self, t):
-        pass
+
+    def obstacle_intersect(self, obstacle):
+        return np.linalg.norm(self.pos - obstacle.pos) < self.radius + obstacle.radius
 
     def line_intersect_sphere(self, v1, v2, o1):
         return np.linalg.norm(v1-o1.pos) <= o1.radius or np.linalg.norm(v2-o1.pos) <= o1.radius
@@ -137,18 +135,15 @@ class Creature(Thing):
             return np.array([self.radius, self.radius])
 
     def calc_seperation_force(self, n):
-        #Check better maybe
-        force = np.array([0.0,0.0])
         if len(n) > 0:
+            force = np.array([0.0,0.0])
             for b in n:
                 diff = self.pos - b.pos
                 distance = np.linalg.norm(diff)
-                force = force + (diff/distance)
+                force = force + (diff/distance) #The force contribution of each individual boids is inverse of the distance
             force = force/len(n)
-            #print("sep" + str(force))
             return force
-        return force
-
+        return np.array([0.0,0.0])
 
     def calc_cohesion_force(self, n):
         if len(n) > 0:
@@ -156,32 +151,19 @@ class Creature(Thing):
             for b in n:
                 avg_pos = avg_pos + b.pos
             avg_pos = avg_pos/len(n)
-            #print("coh" + str(force-self.pos))
             force = (avg_pos - self.pos)/100 #Moves boid towards percieved center by 1% each time
             return force
         return np.array([0.0,0.0])
 
     def calc_alignment_force(self, n):
-        force = np.array([0.0,0.0])
         if len(n) > 0:
+            avg_velocity = np.array([0.0,0.0])
             for b in n:
-                force = force + b.prev_velocity
-            force = force/len(n)
-            #print("align" + str(force-self.velocity))
-            return (force - self.prev_velocity)/8 #TODO: is the 8 needed??
-        return force
+                avg_velocity = avg_velocity + b.prev_velocity
+            avg_velocity = avg_velocity/len(n)
+            return (avg_velocity - self.prev_velocity)/8 #TODO: is the 8 needed??
+        return np.array([0.0,0.0])
 
-    def calc_flocking_force(self, neighbors):
-        sep = self.world.get_seperation_weight() * self.calc_seperation_force(neighbors)
-
-        coh = self.world.get_cohesion_weight() * self.calc_cohesion_force(neighbors)
-
-        align = self.world.get_alignment_weight() * self.calc_alignment_force(neighbors)
-        if isinstance(self, Predator):
-            print(sep)
-            print(coh)
-            print(align)
-        return sep + align + coh
 
     def calc_obstacle_force(self, obstacles):
         avoid = self.world.get_avoidance_weight() * self.calc_repel_force(obstacles)
@@ -194,13 +176,11 @@ class Boid(Creature):
         #Move velocity up to creature, and get_orientation
         self.color = RED
         super(Boid, self).__init__(world, y, x, velocity, radius, sight)
-        self.drawCreature()
-
-
+        self.draw_creature()
 
     def update(self, time_passed):
         self.set_new_pos((self.pos + (self.velocity*time_passed)) % np.array(self.world.get_size()))
-        self.drawCreature()
+        self.draw_creature()
 
     def update_velocity(self):
         self.prev_velocity = self.velocity
@@ -210,22 +190,41 @@ class Boid(Creature):
         self.velocity = self.velocity + self.calc_flocking_force(neighbors) + self.calc_obstacle_force(obstacles) + self.calc_seperation_force(predators)
         self.velocity = self.velocity/np.linalg.norm(self.velocity) * MAX_BOID_VELOCITY
 
+    def calc_flocking_force(self, neighbors):
+        sep = self.world.get_seperation_weight() * self.calc_seperation_force(neighbors)
+        coh = self.world.get_cohesion_weight() * self.calc_cohesion_force(neighbors)
+        align = self.world.get_alignment_weight() * self.calc_alignment_force(neighbors)
+        return sep + align + coh
+
 
 
 class Predator(Creature):
+
+    SEP_WEIGHT = 0.05
+    COH_WEIGHT = 0.50
+    ALIGN_WEIGHT = 0.3
+
     def __init__(self, world, y, x, radius, velocity, sight):
         #Move velocity up to creature, and get_orientation
         self.color = GREEN
         super(Predator, self).__init__(world, y, x, velocity, radius, sight)
-        self.drawCreature()
+        self.draw_creature()
 
     def update(self, time_passed):
         self.set_new_pos((self.pos + self.velocity*time_passed) % np.array(self.world.get_size()))
-        self.drawCreature()
+        self.draw_creature()
+
+    def calc_chase_force(self, neighbors):
+        sep = self.SEP_WEIGHT * self.calc_seperation_force(neighbors)
+
+        coh = self.COH_WEIGHT * self.calc_cohesion_force(neighbors)
+
+        align = self.ALIGN_WEIGHT * self.calc_alignment_force(neighbors)
+        return sep + align + coh
 
     def update_velocity(self):
         self.prev_velocity = self.velocity
         neighbors = self.prune(self.world.get_close_neighbors(self, False), MAX_NEIGHBORS)
         obstacles = self.world.get_close_obstacles(self)
-        self.velocity = self.velocity +  self.calc_flocking_force(neighbors) + self.calc_obstacle_force(obstacles)
+        self.velocity = self.velocity +  self.calc_chase_force(neighbors) + self.calc_obstacle_force(obstacles)
         self.velocity = self.velocity/np.linalg.norm(self.velocity) * MAX_PRED_VELOCITY

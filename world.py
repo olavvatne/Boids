@@ -5,9 +5,17 @@ import math
 
 
 OBSTACLE_RADIUS = 30
+PREDATOR_RADIUS = 10.0
+BOID_RADIUS = 8.0
+
 GRID_WIDTH = 10
 
+BOID_SIGHT = 80.0
+PREDATOR_SIGHT = 100.0
+
 class World(object):
+
+
 
     def __init__(self, screen, coh, align, sep, avoid):
         '''
@@ -32,7 +40,7 @@ class World(object):
         self.predators = pygame.sprite.Group()
         self.obstacles = pygame.sprite.Group()
 
-    def populate(self, nr_of_boids, boid_radius, boid_sight):
+    def populate(self, nr_of_boids, boid_radius = BOID_RADIUS, boid_sight = BOID_SIGHT):
         width, height = self.get_size()
         for i in range(nr_of_boids):
             x = random.randrange(width)
@@ -50,7 +58,7 @@ class World(object):
 
     def add_predator(self, pos):
         v = np.array([random.uniform(-15, 15), random.uniform(-15, 15)])
-        predator = Predator(self, pos[1], pos[0], 10, v, 80)
+        predator = Predator(self, pos[1], pos[0], PREDATOR_RADIUS, v, PREDATOR_SIGHT)
         self.all_things.add(predator)
         self.predators.add(predator)
         print("PREDATOR")
@@ -94,15 +102,15 @@ class World(object):
             neighborhood.remove(creature)
         return neighborhood
 
-    def get_close_predators(self, boid):
+    def get_close_predators(self, creature):
         '''
-        The world return all predators detected by the boid's line of sight.
-        If a predator is close by, the flight path of boid will be influenced
+        The world return all predators detected by the creature's line of sight.
+        If a predator is close by, the flight path of creature will be influenced
         '''
         close_predators = []
         for predator in self.predators:
-            distance = np.linalg.norm(predator.pos-boid.pos)
-            if distance < boid.sight:
+            distance = np.linalg.norm(predator.pos-creature.pos)
+            if distance < creature.sight:
                 close_predators.append(predator)
         return close_predators
 
