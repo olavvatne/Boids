@@ -1,15 +1,18 @@
 from pygame.sprite import Sprite
 import pygame, random
 import numpy as np
-import math
 
+#Constants
 MAX_PRED_VELOCITY = 0.15
 MAX_BOID_VELOCITY = 0.1
 ZERO_ARRAY = np.array([0.0, 0.0])
 MAX_NEIGHBORS = 15
 RED = (255,0,0)
 GREEN = (0,255,0)
+
+#Lookup dictionary for distances to reduce cost of calc seperation force
 distance_lookup = {}
+
 class Thing(Sprite):
     id_counter = 0
 
@@ -62,8 +65,11 @@ class Obstacle(Thing):
         self.draw_obstacle()
 
     def draw_obstacle(self):
+        '''
+        Draw method for the obstacle. A filled circle
+        '''
         self.image.fill((0,0,0))
-        pygame.draw.ellipse(self.image, (0, 255, 0), [0, 0, self.radius*2-8, self.radius*2-8])
+        pygame.draw.ellipse(self.image, GREEN, [0, 0, self.radius*2-8, self.radius*2-8])
 
 
 
@@ -219,10 +225,22 @@ class Boid(Creature):
         self.draw_creature()
 
     def update(self, time_passed):
+        '''
+        On each update a new position is calculated based on time_passed since last update, the velocity and the
+        position of the boid. To ensure wrap around modulo is used. Then the creature is redrawn. This is necessary
+        since the direction of the boid might have changed, and need to be updated.
+        '''
         self.set_new_pos((self.pos + (self.velocity*time_passed)) % np.array(self.world.get_size()))
         self.draw_creature()
 
     def update_velocity(self):
+        '''
+        A updated velocity is created by using three simple flocking behavior rules, obstacle and predator avoidance.
+        The velocity change is only based on local information readily available by the boids neigborhood. The velocity
+        is also normalized and scaled by a max velocity constant to ensure that the velocity is bounded.
+        The prune method is used to reduce flocking calculation time. A random sample is used if the neigborhood of the boid
+        is to big.
+        '''
         self.prev_velocity = self.velocity
         neighbors = self.prune(self.world.get_close_neighbors(self, True), MAX_NEIGHBORS)
         obstacles = self.world.get_close_obstacles(self)
@@ -231,6 +249,10 @@ class Boid(Creature):
         self.velocity = self.velocity/np.linalg.norm(self.velocity) * MAX_BOID_VELOCITY
 
     def calc_flocking_force(self, neighbors):
+        '''
+        Basic flocking behavior is decided by three rules weighted together to create a force vector. Based on Craig
+        Reynolds three steering behaviors, seperation, cohesion and alignment.
+        '''
         sep = self.world.get_seperation_weight() * self.calc_seperation_force(neighbors)
         coh = self.world.get_cohesion_weight() * self.calc_cohesion_force(neighbors)
         align = self.world.get_alignment_weight() * self.calc_alignment_force(neighbors)
@@ -256,18 +278,32 @@ class Predator(Creature):
         self.draw_creature()
 
     def update(self, time_passed):
+        '''
+        At each update a new position for the predator is created by the last position, time passed in between updates
+        and the current velocity of the predator. The predator also has to be redrawn since the direction it's heading
+        might have changed, and the direction line must be updated.
+        '''
         self.set_new_pos((self.pos + self.velocity*time_passed) % np.array(self.world.get_size()))
         self.draw_creature()
 
     def calc_chase_force(self, neighbors):
+        '''
+        The predators chasing behavior is very similar to the boids flocking behavior method. The share the same rules,
+        except the rules cant by dynamically changed. The result of these three rules is that the predator is attracted
+        to big clusters of boids, and therefore chase boids. The boids on the other hand try to create seperation between
+        the predator and itself.
+        '''
         sep = self.SEP_WEIGHT * self.calc_seperation_force(neighbors)
-
         coh = self.COH_WEIGHT * self.calc_cohesion_force(neighbors)
-
         align = self.ALIGN_WEIGHT * self.calc_alignment_force(neighbors)
         return sep + align + coh
 
     def update_velocity(self):
+        '''
+        At each update the velocity of the predator is updated. Force vectors that encourage chasing and obstacle avoidance
+        is summed together with the previous velocity to create a new velocity vector. This velocity vector is also bounded
+        by the MAX_PRED_VELOCITY, by scaling the normalized velocity vector by this constant.
+        '''
         self.prev_velocity = self.velocity
         neighbors = self.prune(self.world.get_close_neighbors(self, False), MAX_NEIGHBORS)
         obstacles = self.world.get_close_obstacles(self)
