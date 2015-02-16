@@ -62,7 +62,7 @@ class Obstacle(Thing):
 
     def draw_obstacle(self):
         self.image.fill((0,0,0))
-        pygame.draw.ellipse(self.image, (0, 255, 0), [0, 0, self.radius*2-20, self.radius*2-20])
+        pygame.draw.ellipse(self.image, (0, 255, 0), [0, 0, self.radius*2-5, self.radius*2-5])
 
 
 
@@ -88,25 +88,33 @@ class Creature(Thing):
         if isinstance(self, Boid):
             self.world.set_new_element_position(old_pos-self.radius, new_pos-self.radius, self) #A way to do this exploting inheritenace i
 
+    def perpendicular(self, a ) :
+        b = np.empty_like(a)
+        b[0] = -a[1]
+        b[1] = a[0]
+        return b
+
     def calc_repel_force(self, obstacles):
         #The idea is to check if any of the obstacles is on a collisiion course by using a lookahead vector. A avoidance force
         #is created for the most threatning obstacle.
-        base = self.prev_velocity/np.linalg.norm(self.prev_velocity) * self.sight
-        ahead = self.pos + base
-        ahead2 = (base*0.5) + self.pos
-        #pygame.draw.aaline(
-        #    self.world.screen,
-        #    (1,255,1),
-        #    self.pos,
-        #    ahead2,
-        #    21
-        #    )
+        norm_base = self.prev_velocity/np.linalg.norm(self.prev_velocity)
+        perp_norm = self.perpendicular(norm_base) * self.radius
+        #edge1 = perp_norm + self.pos
+        #edge2 = -perp_norm + self.pos
+        ahead = self.pos + norm_base * self.sight
+        ahead2 = (norm_base * self.sight *0.5) + self.pos
+        #ahead3 = (norm_base * self.sight) + edge2
+        #ahead4 = (norm_base * self.sight *0.5) + edge2
+        #pygame.draw.aaline(self.world.screen,(1,255,1), self.pos,ahead,21)
         threat = None
+        largest_distance = float("inf")
         for obstacle in obstacles:
-            if self.line_intersect_sphere(ahead, ahead2, obstacle):
-                threat = obstacle
-                #TODO: Need to find most threatning obstacle
-                break
+            diff = self.pos - obstacle.pos
+            distance = np.linalg.norm(diff)
+            if self.line_intersect_sphere(ahead, ahead2, obstacle) or distance < obstacle.radius + self.radius:
+                if largest_distance > distance:
+                    threat = obstacle
+                    largest_distance = distance
         if threat:
             force = ahead - threat.pos
             magnitude = (np.linalg.norm(force))

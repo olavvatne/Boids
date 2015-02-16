@@ -20,7 +20,7 @@ BG_COLOR = WHITE
 width, height = 800, 480
 dim = [width, height]
 
-nr_of_boids = 300
+nr_of_boids = 20
 
 pygame.init()
 
