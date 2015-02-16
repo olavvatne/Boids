@@ -56,6 +56,12 @@ class World(object):
         self.all_things.add(obstacle)
         self.obstacles.add(obstacle)
 
+    def remove_obstacle(self, pos):
+        for obstacle in self.obstacles:
+            if obstacle.rect.collidepoint(pos):
+                obstacle.image.fill((0,0,0))
+                self.obstacles.remove(obstacle)
+
     def add_predator(self, pos):
         v = np.array([random.uniform(-15, 15), random.uniform(-15, 15)])
         predator = Predator(self, pos[1], pos[0], PREDATOR_RADIUS, v, PREDATOR_SIGHT)

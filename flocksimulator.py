@@ -56,7 +56,9 @@ def run_simulation():
                     world.add_obstacle(pygame.mouse.get_pos())
                 if event.key == K_p:
                     world.add_predator(pygame.mouse.get_pos())
-
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 3:
+                    world.remove_obstacle(pygame.mouse.get_pos())
         screen.fill(BG_COLOR)
 
         #Update  and redraw all creatures on screen
