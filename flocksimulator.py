@@ -7,7 +7,6 @@ import cProfile
 
 
 BLACK = (0,0,0)
-
 WHITE = (255,255,255)
 BG_COLOR = WHITE
 
@@ -20,7 +19,11 @@ nr_of_boids = 200
 pygame.init()
 
 screen = pygame.display.set_mode(dim)
+pygame.display.set_caption('Boids')
 controls= sgc.surface.Screen(dim)
+
+
+#Slider gui elements
 sep_slider = sgc.Scale((100,35),label_col=BLACK,label="Seperation", pos=(10, 10), min=0, max=200, min_step=1)
 sep_slider.add(0)
 coh_slider = sgc.Scale((100,35),label_col=BLACK ,label="Cohesion", pos=(10, 50), min=0, max=100, min_step=1,)
@@ -30,8 +33,8 @@ align_slider.add(0)
 avoid_slider = sgc.Scale((100,35),label_col=BLACK,label="Avoidance", pos=(10, 130), min=0, max=1000, min_step=1)
 avoid_slider.add(0)
 
-pygame.display.set_caption('Boids')
 
+#World init and populating
 world = World(screen, coh_slider,align_slider, sep_slider, avoid_slider)
 world.populate(nr_of_boids)
 
@@ -59,11 +62,8 @@ def run_simulation():
                 if event.button == 3:
                     world.remove_obstacle(pygame.mouse.get_pos())
         screen.fill(BG_COLOR)
-        dtime = time_passed / 1000
-        fps = 1 / dtime
-        if number % 10 == 0:
-            print("FPS: ", fps)
-        number += 1
+
+
         #Update  and redraw all creatures on screen
         for creature in world.all_things:
             creature.update_velocity()
@@ -73,6 +73,12 @@ def run_simulation():
         sgc.update(time_passed)
         #When all object is drawn, the graphics is rendered
         pygame.display.update()
+
+        dtime = time_passed / 1000
+        fps = 1 / dtime
+        if number % 10 == 0:
+            print("FPS: ", fps)
+        number += 1
     pygame.quit()
     sys.exit()
 #run_simulation()

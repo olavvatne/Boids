@@ -17,6 +17,10 @@ class Thing(Sprite):
     id_counter = 0
 
     def __init__(self,world, y, x, width, height):
+        '''
+        Thing class is a subclass of pygames sprite. Also the superclass of boid, predator and obstacle. This class
+        contain position, and the Sprite image.
+        '''
         super().__init__()
         self.thing_id = str(Thing.id_counter)
         Thing.id_counter += 1
@@ -60,6 +64,10 @@ class Thing(Sprite):
 
 class Obstacle(Thing):
     def __init__(self, world, y, x, radius):
+        '''
+        Obstacle is a subclass of thing and contain a draw method, and an addition radius for the obstacle.
+        Does not contain a velocity since it's a stationary object.
+        '''
         super().__init__(world, y, x, radius*2, radius*2)
         self.radius = radius
         self.draw_obstacle()
@@ -75,6 +83,10 @@ class Obstacle(Thing):
 
 class Creature(Thing):
     def __init__(self,world, y, x, velocity, radius, sight):
+        '''
+        The Creature class is a common class for all creature's that can move. The class inherit from Thing, and include
+        velocity, sight range, and radius of the creature
+        '''
         self.radius = radius
         self.velocity = velocity
         self.prev_velocity = velocity
@@ -218,6 +230,9 @@ class Creature(Thing):
 
 
 class Boid(Creature):
+    '''
+    Specialization of Creature class. Define how boids should move and relate to other Obstacles and Creatures.
+    '''
     def __init__(self, world, y, x, radius, velocity, sight):
         #Move velocity up to creature, and get_orientation
         self.color = RED
@@ -272,7 +287,10 @@ class Predator(Creature):
     ALIGN_WEIGHT = 0.3
 
     def __init__(self, world, y, x, radius, velocity, sight):
-        #Move velocity up to creature, and get_orientation
+        '''
+        Predator is a specialization of Creature and define how a predator should act and move depending on local information
+        extracted from it's neighborhood.
+        '''
         self.color = GREEN
         super(Predator, self).__init__(world, y, x, velocity, radius, sight)
         self.draw_creature()
