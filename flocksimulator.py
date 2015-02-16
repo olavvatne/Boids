@@ -5,11 +5,6 @@ from pygame.locals import *
 from world import World
 import cProfile
 
-class Slider(sgc.Scale):
-    def __init__(self, **kwargs):
-        super().__init__((100,35), label_col=BLACK, **kwargs)
-        self.add(0)
-
 
 BLACK = (0,0,0)
 
@@ -17,19 +12,23 @@ WHITE = (255,255,255)
 BG_COLOR = WHITE
 
 #Screen width and height
-width, height = 800, 480
+width, height = 1200, 600
 dim = [width, height]
 
-nr_of_boids = 20
+nr_of_boids = 200
 
 pygame.init()
 
 screen = pygame.display.set_mode(dim)
 controls= sgc.surface.Screen(dim)
-sep_slider = Slider(label="Seperation", pos=(10, 10), min=0, max=200, min_step=1)
-coh_slider = Slider(label="Cohesion", pos=(10, 50), min=0, max=100, min_step=1,)
-align_slider = Slider(label="Aligmnent", pos=(10, 90), min=0, max=100, min_step=1,)
-avoid_slider = Slider(label="Avoidance", pos=(10, 130), min=0, max=1000, min_step=1)
+sep_slider = sgc.Scale((100,35),label_col=BLACK,label="Seperation", pos=(10, 10), min=0, max=200, min_step=1)
+sep_slider.add(0)
+coh_slider = sgc.Scale((100,35),label_col=BLACK ,label="Cohesion", pos=(10, 50), min=0, max=100, min_step=1,)
+coh_slider.add(0)
+align_slider = sgc.Scale((100,35),label_col=BLACK,label="Aligmnent", pos=(10, 90), min=0, max=100, min_step=1,)
+align_slider.add(0)
+avoid_slider = sgc.Scale((100,35),label_col=BLACK,label="Avoidance", pos=(10, 130), min=0, max=1000, min_step=1)
+avoid_slider.add(0)
 
 pygame.display.set_caption('Boids')
 
@@ -41,7 +40,7 @@ world.populate(nr_of_boids)
 #Calculate the new absolute position
 def run_simulation():
     clock = pygame.time.Clock()
-
+    number = 0
     stopping = False
     while not stopping:
         time_passed = clock.tick(30)
@@ -60,7 +59,11 @@ def run_simulation():
                 if event.button == 3:
                     world.remove_obstacle(pygame.mouse.get_pos())
         screen.fill(BG_COLOR)
-
+        dtime = time_passed / 1000
+        fps = 1 / dtime
+        if number % 10 == 0:
+            print("FPS: ", fps)
+        number += 1
         #Update  and redraw all creatures on screen
         for creature in world.all_things:
             creature.update_velocity()
@@ -72,8 +75,8 @@ def run_simulation():
         pygame.display.update()
     pygame.quit()
     sys.exit()
-run_simulation()
-#cProfile.run('run_simulation()')
+#run_simulation()
+cProfile.run('run_simulation()')
 
 
 

@@ -5,10 +5,11 @@ import math
 
 MAX_PRED_VELOCITY = 0.15
 MAX_BOID_VELOCITY = 0.1
-MAX_NEIGHBORS = 20
+ZERO_ARRAY = np.array([0.0, 0.0])
+MAX_NEIGHBORS = 15
 RED = (255,0,0)
 GREEN = (0,255,0)
-
+distance_lookup = {}
 class Thing(Sprite):
     id_counter = 0
 
@@ -62,7 +63,7 @@ class Obstacle(Thing):
 
     def draw_obstacle(self):
         self.image.fill((0,0,0))
-        pygame.draw.ellipse(self.image, (0, 255, 0), [0, 0, self.radius*2-5, self.radius*2-5])
+        pygame.draw.ellipse(self.image, (0, 255, 0), [0, 0, self.radius*2-8, self.radius*2-8])
 
 
 
@@ -76,36 +77,37 @@ class Creature(Thing):
         super(Creature, self).__init__(world, y, x, radius*2, radius*2)
 
     def draw_creature(self):
+        '''
+        Update the Sprite image, by drawing a filled circle and a line showing the direction the creature is heading.
+        '''
         self.image.fill((0,0,0))
         pygame.draw.ellipse(self.image, self.color, [0, 0, self.radius*2, self.radius*2])
         pygame.draw.aaline( self.image, (1,1,1), (self.radius,self.radius), self.get_orientation(), 2)
 
     def set_new_pos(self, new_pos):
+        '''
+        By using the creatures velocity a new position on the map is calculated. In case the creature is a boid
+        '''
         old_pos = self.pos
         self.pos = new_pos
         self.rect.x = self.pos[0]-self.radius
         self.rect.y = self.pos[1]-self.radius
-        if isinstance(self, Boid):
-            self.world.set_new_element_position(old_pos-self.radius, new_pos-self.radius, self) #A way to do this exploting inheritenace i
+        self.notify_of_position_change(old_pos, new_pos)
 
-    def perpendicular(self, a ) :
-        b = np.empty_like(a)
-        b[0] = -a[1]
-        b[1] = a[0]
-        return b
+    def notify_of_position_change(self, old_pos, new_pos):
+        pass
 
     def calc_repel_force(self, obstacles):
-        #The idea is to check if any of the obstacles is on a collisiion course by using a lookahead vector. A avoidance force
-        #is created for the most threatning obstacle.
+        '''
+        Repel force creates a force designed to avoid obstacles in the boids field of view. To ensure that the motion is
+        smooth a look ahead vector is used to check intersecting obstacles. If there is a threat in front, the same vector
+        and the obstacles position is used to create a new vector scaled by the force's manitude. If the threat is close
+        the force will have a bigger influence on the creature's velocity. A create will respond only to the closest threat
+        at each velocity update.
+        '''
         norm_base = self.prev_velocity/np.linalg.norm(self.prev_velocity)
-        perp_norm = self.perpendicular(norm_base) * self.radius
-        #edge1 = perp_norm + self.pos
-        #edge2 = -perp_norm + self.pos
         ahead = self.pos + norm_base * self.sight
         ahead2 = (norm_base * self.sight *0.5) + self.pos
-        #ahead3 = (norm_base * self.sight) + edge2
-        #ahead4 = (norm_base * self.sight *0.5) + edge2
-        #pygame.draw.aaline(self.world.screen,(1,255,1), self.pos,ahead,21)
         threat = None
         largest_distance = float("inf")
         for obstacle in obstacles:
@@ -122,11 +124,7 @@ class Creature(Thing):
                 force[1] = 0
             return force/magnitude
         else:
-            return np.array([0.0,0.0])
-
-
-    def obstacle_intersect(self, obstacle):
-        return np.linalg.norm(self.pos - obstacle.pos) < self.radius + obstacle.radius
+            return ZERO_ARRAY
 
     def line_intersect_sphere(self, v1, v2, o1):
         return np.linalg.norm(v1-o1.pos) <= o1.radius or np.linalg.norm(v2-o1.pos) <= o1.radius
@@ -135,6 +133,10 @@ class Creature(Thing):
         pass
 
     def get_orientation(self):
+        '''
+        Returns a orientation vector for drawing purposes. A normalized velocity vector is scaled by the creature's radius
+        and offset by the center of creature.
+        '''
         if not np.all(self.velocity==0):
             orientation = self.velocity/np.linalg.norm(self.velocity)*self.radius
             center = self.radius
@@ -142,35 +144,65 @@ class Creature(Thing):
         else:
             return np.array([self.radius, self.radius])
 
+    def get_distance(self, diff):
+        '''
+        A small enhancement of seperation force calculations. The np.linalg.norm operation is quite expensive, and since
+        there are a finite amount of integer distance vectors, all scalar distance calculations are put in a dictionary.
+        '''
+        aprox_diff = str(int(diff[0])) + " " + str(int(diff[1]))
+        if aprox_diff in distance_lookup:
+            return distance_lookup[aprox_diff]
+        else:
+            distance = np.linalg.norm(diff)
+            distance_lookup[aprox_diff] = distance
+            return distance
+
     def calc_seperation_force(self, n):
+        '''
+        A seperation or repel force is calculated based on creatures in the creature's neighborhood. One of the simple
+        steering behaviors described by Craig Reynolds. The diff vector between the current creature and it's neighbors
+        are inversely scaled by the distance. The sum of these vectors are then divided by the number of creatures in the neighborhood
+        resulting in a force that encourage more seperation from the other creatures in the neighborhood
+        '''
         if len(n) > 0:
-            force = np.array([0.0,0.0])
+            force = ZERO_ARRAY
             for b in n:
                 diff = self.pos - b.pos
-                distance = np.linalg.norm(diff)
-                force = force + (diff/distance) #The force contribution of each individual boids is inverse of the distance
+                distance = self.get_distance(diff)
+                force = force + (diff*(1/distance)) #The force contribution of each individual boids is inverse of the distance
             force = force/len(n)
             return force
-        return np.array([0.0,0.0])
+        return ZERO_ARRAY
 
     def calc_cohesion_force(self, n):
+        '''
+        The calculated cohesion force encourage closeness between the creature and it's neighbors. THe average position
+        of the neighborhood is found and a vector pointing towards the center is returned by the method. The force can
+        be added to the creature's velocity and will move the creature towards the percieved center by 1% each time
+        the velocity is updated.
+        '''
         if len(n) > 0:
-            avg_pos = np.array([0.0,0.0])
+            avg_pos = ZERO_ARRAY
             for b in n:
                 avg_pos = avg_pos + b.pos
             avg_pos = avg_pos/len(n)
             force = (avg_pos - self.pos)/100 #Moves boid towards percieved center by 1% each time
             return force
-        return np.array([0.0,0.0])
+        return ZERO_ARRAY
 
     def calc_alignment_force(self, n):
+        '''
+        The alignment force finds the average velocity in the creature's neighborhood and return a force that can move
+        the velocity of the creature towards the average velocity. This force will steer the creature towards the average
+        heading of it's neighbors.
+        '''
         if len(n) > 0:
-            avg_velocity = np.array([0.0,0.0])
+            avg_velocity = ZERO_ARRAY
             for b in n:
                 avg_velocity = avg_velocity + b.prev_velocity
             avg_velocity = avg_velocity/len(n)
-            return (avg_velocity - self.prev_velocity)/8 #TODO: is the 8 needed??
-        return np.array([0.0,0.0])
+            return (avg_velocity - self.prev_velocity)/8
+        return ZERO_ARRAY
 
 
     def calc_obstacle_force(self, obstacles):
@@ -204,7 +236,12 @@ class Boid(Creature):
         align = self.world.get_alignment_weight() * self.calc_alignment_force(neighbors)
         return sep + align + coh
 
-
+    def notify_of_position_change(self, old_pos, new_pos):
+        '''
+        Method overridden from the Creature class. The world needs to do some bookkeeping on the where each boid
+        is positioned in the world, to more efficiently calculate the neigborhoods required by each boid.
+        '''
+        self.world.set_new_element_position(old_pos-self.radius, new_pos-self.radius, self)
 
 class Predator(Creature):
 

@@ -4,7 +4,7 @@ from creature import Boid, Obstacle, Predator
 import math
 
 
-OBSTACLE_RADIUS = 25
+OBSTACLE_RADIUS = 30
 PREDATOR_RADIUS = 10.0
 BOID_RADIUS = 8.0
 
