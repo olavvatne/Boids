@@ -78,11 +78,11 @@ def run_simulation():
         #When all object is drawn, the graphics is rendered
         pygame.display.update()
 
-        dtime = time_passed / 1000
-        fps = 1 / dtime
-        if number % 10 == 0:
-            print("FPS: ", fps)
-        number += 1
+        #dtime = time_passed / 1000
+        #fps = 1 / dtime
+        #if number % 10 == 0:
+        #    print("FPS: ", fps)
+        #number += 1
     pygame.quit()
     sys.exit()
 
