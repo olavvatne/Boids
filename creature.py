@@ -3,14 +3,15 @@ import pygame, random
 import numpy as np
 
 #Constants
-MAX_PRED_VELOCITY = 0.15
-MAX_BOID_VELOCITY = 0.1
+MAX_PRED_VELOCITY = 0.2
+MAX_BOID_VELOCITY = 0.15
 ZERO_ARRAY = np.array([0.0, 0.0])
-MAX_NEIGHBORS = 15
-RED = (255,0,0)
-GREEN = (0,255,0)
+MAX_NEIGHBORS = 10
+RED = (255,0,60)
+GREEN = (136,193,0)
+ORANGE = (255,138,0)
 
-#Lookup dictionary for distances to reduce cost of calc seperation force
+#Lookup dictionary for distances to reduce cost of calc separation force
 distance_lookup = {}
 
 class Thing(Sprite):
@@ -77,7 +78,7 @@ class Obstacle(Thing):
         Draw method for the obstacle. A filled circle
         '''
         self.image.fill((0,0,0))
-        pygame.draw.ellipse(self.image, GREEN, [0, 0, self.radius*2-8, self.radius*2-8])
+        pygame.draw.ellipse(self.image, ORANGE, [0, 0, self.radius*2-8, self.radius*2-8])
 
 
 
@@ -100,7 +101,7 @@ class Creature(Thing):
         '''
         self.image.fill((0,0,0))
         pygame.draw.ellipse(self.image, self.color, [0, 0, self.radius*2, self.radius*2])
-        pygame.draw.aaline( self.image, (1,1,1), (self.radius,self.radius), self.get_orientation(), 2)
+        pygame.draw.line( self.image, (1,1,1), (self.radius,self.radius), self.get_orientation(), 2)
 
     def set_new_pos(self, new_pos):
         '''
@@ -138,8 +139,6 @@ class Creature(Thing):
         if threat:
             force = ahead - threat.pos
             magnitude = (np.linalg.norm(force))
-            if magnitude < 0:
-                force[1] = 0
             return force/magnitude
         else:
             return ZERO_ARRAY
@@ -164,7 +163,7 @@ class Creature(Thing):
 
     def get_distance(self, diff):
         '''
-        A small enhancement of seperation force calculations. The np.linalg.norm operation is quite expensive, and since
+        A small enhancement of separation force calculations. The np.linalg.norm operation is quite expensive, and since
         there are a finite amount of integer distance vectors, all scalar distance calculations are put in a dictionary.
         '''
         aprox_diff = str(int(diff[0])) + " " + str(int(diff[1]))
@@ -175,12 +174,12 @@ class Creature(Thing):
             distance_lookup[aprox_diff] = distance
             return distance
 
-    def calc_seperation_force(self, n):
+    def calc_separation_force(self, n):
         '''
-        A seperation or repel force is calculated based on creatures in the creature's neighborhood. One of the simple
+        A separation or repel force is calculated based on creatures in the creature's neighborhood. One of the simple
         steering behaviors described by Craig Reynolds. The diff vector between the current creature and it's neighbors
         are inversely scaled by the distance. The sum of these vectors are then divided by the number of creatures in the neighborhood
-        resulting in a force that encourage more seperation from the other creatures in the neighborhood
+        resulting in a force that encourage more separation from the other creatures in the neighborhood
         '''
         if len(n) > 0:
             force = ZERO_ARRAY
@@ -204,7 +203,7 @@ class Creature(Thing):
             for b in n:
                 avg_pos = avg_pos + b.pos
             avg_pos = avg_pos/len(n)
-            force = (avg_pos - self.pos)/100 #Moves boid towards percieved center by 1% each time
+            force = (avg_pos - self.pos)/100 #Moves boid towards perceived center by 1% each time
             return force
         return ZERO_ARRAY
 
@@ -235,7 +234,7 @@ class Boid(Creature):
     '''
     def __init__(self, world, y, x, radius, velocity, sight):
         #Move velocity up to creature, and get_orientation
-        self.color = RED
+        self.color = GREEN
         super(Boid, self).__init__(world, y, x, velocity, radius, sight)
         self.draw_creature()
 
@@ -260,15 +259,15 @@ class Boid(Creature):
         neighbors = self.prune(self.world.get_close_neighbors(self, True), MAX_NEIGHBORS)
         obstacles = self.world.get_close_obstacles(self)
         predators = self.world.get_close_predators(self)
-        self.velocity = self.velocity + self.calc_flocking_force(neighbors) + self.calc_obstacle_force(obstacles) + self.calc_seperation_force(predators)
+        self.velocity = self.velocity + self.calc_flocking_force(neighbors) + self.calc_obstacle_force(obstacles) + self.calc_separation_force(predators)
         self.velocity = self.velocity/np.linalg.norm(self.velocity) * MAX_BOID_VELOCITY
 
     def calc_flocking_force(self, neighbors):
         '''
         Basic flocking behavior is decided by three rules weighted together to create a force vector. Based on Craig
-        Reynolds three steering behaviors, seperation, cohesion and alignment.
+        Reynolds three steering behaviors, separation, cohesion and alignment.
         '''
-        sep = self.world.get_seperation_weight() * self.calc_seperation_force(neighbors)
+        sep = self.world.get_separation_weight() * self.calc_separation_force(neighbors)
         coh = self.world.get_cohesion_weight() * self.calc_cohesion_force(neighbors)
         align = self.world.get_alignment_weight() * self.calc_alignment_force(neighbors)
         return sep + align + coh
@@ -291,7 +290,7 @@ class Predator(Creature):
         Predator is a specialization of Creature and define how a predator should act and move depending on local information
         extracted from it's neighborhood.
         '''
-        self.color = GREEN
+        self.color = RED
         super(Predator, self).__init__(world, y, x, velocity, radius, sight)
         self.draw_creature()
 
@@ -308,10 +307,10 @@ class Predator(Creature):
         '''
         The predators chasing behavior is very similar to the boids flocking behavior method. The share the same rules,
         except the rules cant by dynamically changed. The result of these three rules is that the predator is attracted
-        to big clusters of boids, and therefore chase boids. The boids on the other hand try to create seperation between
+        to big clusters of boids, and therefore chase boids. The boids on the other hand try to create separation between
         the predator and itself.
         '''
-        sep = self.SEP_WEIGHT * self.calc_seperation_force(neighbors)
+        sep = self.SEP_WEIGHT * self.calc_separation_force(neighbors)
         coh = self.COH_WEIGHT * self.calc_cohesion_force(neighbors)
         align = self.ALIGN_WEIGHT * self.calc_alignment_force(neighbors)
         return sep + align + coh

@@ -19,7 +19,7 @@ class World(object):
     def __init__(self, screen, coh, align, sep, avoid):
         '''
         The world of all objects has some properties, like dimension
-        and weights for seperation alignment and cohesion. Boids
+        and weights for separation alignment and cohesion. Boids
         will use these variables to calculate their new positions.
         All boids use the same weights. Logically the World class contain methods Creatures will use
         when interacting with the world. Getting neighboring Boids, Predators, obstacles etc.
@@ -27,8 +27,8 @@ class World(object):
         self.screen = screen
         width, height = self.get_size()
         self.grid =Grid(width, height)
-        self.seperation = sep
-        self.seperation.value = 0
+        self.separation = sep
+        self.separation.value = 0
         self.alignment = align
         self.alignment.value = 0
         self.cohesion = coh
@@ -85,6 +85,12 @@ class World(object):
         self.all_things.add(predator)
         self.predators.add(predator)
 
+    def remove_all_predators(self):
+        for pred in self.predators:
+            self.all_things.remove(pred)
+            pred.image.fill((0,0,0))
+        self.predators = pygame.sprite.Group()
+
     def get_cohesion_weight(self):
         '''
         Retrieve cohesion weight from slider
@@ -98,13 +104,13 @@ class World(object):
         #print(self.cohesion.value)
         return self.alignment.value/100
 
-    def get_seperation_weight(self):
+    def get_separation_weight(self):
         '''
-        Retrieve seperation weight from slider
+        Retrieve separation weight from slider
         '''
         #print(self.cohesion.value)
-        return self.seperation.value/100
-        return self.seperation.value/100
+        return self.separation.value/100
+        return self.separation.value/100
 
     def get_avoidance_weight(self):
         return self.avoid.value/100
@@ -162,6 +168,8 @@ class World(object):
         grid.
         '''
         self.grid.move_element(old_pos[1], old_pos[0], new_pos[1], new_pos[0], element)
+
+
 
 
 class Grid(object):

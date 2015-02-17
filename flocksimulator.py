@@ -7,7 +7,7 @@ import cProfile
 
 
 BLACK = (0,0,0)
-WHITE = (255,255,255)
+WHITE = (228,228,197)
 BG_COLOR = WHITE
 
 #Screen width and height
@@ -24,7 +24,7 @@ controls= sgc.surface.Screen(dim)
 
 
 #Slider gui elements
-sep_slider = sgc.Scale((100,35),label_col=BLACK,label="Seperation", pos=(10, 10), min=0, max=200, min_step=1)
+sep_slider = sgc.Scale((100,35),label_col=BLACK,label="Separation", pos=(10, 10), min=0, max=200, min_step=1)
 sep_slider.add(0)
 coh_slider = sgc.Scale((100,35),label_col=BLACK ,label="Cohesion", pos=(10, 50), min=0, max=100, min_step=1,)
 coh_slider.add(0)
@@ -57,7 +57,11 @@ def run_simulation():
                 if event.key == K_o:
                     world.add_obstacle(pygame.mouse.get_pos())
                 if event.key == K_p:
-                    world.add_predator(pygame.mouse.get_pos())
+                    mods = pygame.key.get_mods()
+                    if mods & pygame.KMOD_SHIFT:
+                        world.remove_all_predators()
+                    else:
+                        world.add_predator(pygame.mouse.get_pos())
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 3:
                     world.remove_obstacle(pygame.mouse.get_pos())
@@ -74,15 +78,16 @@ def run_simulation():
         #When all object is drawn, the graphics is rendered
         pygame.display.update()
 
-        dtime = time_passed / 1000
-        fps = 1 / dtime
-        if number % 10 == 0:
-            print("FPS: ", fps)
-        number += 1
+        #dtime = time_passed / 1000
+        #fps = 1 / dtime
+        #if number % 10 == 0:
+        #    print("FPS: ", fps)
+        #number += 1
     pygame.quit()
     sys.exit()
+
 #run_simulation()
-cProfile.run('run_simulation()')
+cProfile.run('run_simulation()', sort='cumtime')
 
 
 
