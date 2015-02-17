@@ -186,7 +186,7 @@ class Creature(Thing):
             for b in n:
                 diff = self.pos - b.pos
                 distance = self.get_distance(diff)
-                force = force + (diff*(1/distance)) #The force contribution of each individual boids is inverse of the distance
+                force = force + diff/distance #The force contribution of each individual boids is inverse of the distance
             force = force/len(n)
             return force
         return ZERO_ARRAY
@@ -324,5 +324,6 @@ class Predator(Creature):
         self.prev_velocity = self.velocity
         neighbors = self.prune(self.world.get_close_neighbors(self, False), MAX_NEIGHBORS)
         obstacles = self.world.get_close_obstacles(self)
-        self.velocity = self.velocity +  self.calc_chase_force(neighbors) + self.calc_obstacle_force(obstacles)
+        predators = self.world.get_close_predators(self)
+        self.velocity = self.velocity +  self.calc_chase_force(neighbors) + self.calc_obstacle_force(obstacles) + 0.2 * self.calc_separation_force(predators)
         self.velocity = self.velocity/np.linalg.norm(self.velocity) * MAX_PRED_VELOCITY
